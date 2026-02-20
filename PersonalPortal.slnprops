@@ -1,0 +1,14 @@
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">17.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <SolutionProjects Include="PersonalPortal.API\PersonalPortal.API.csproj" />
+    <SolutionProjects Include="PersonalPortal.Web\PersonalPortal.Web.csproj" />
+    <SolutionProjects Include="PersonalPortal.Core\PersonalPortal.Core.csproj" />
+  </ItemGroup>
+  <Target Name="StartMultiple">
+    <MSBuild Projects="@(SolutionProjects)" Targets="Build" />
+  </Target>
+</Project>

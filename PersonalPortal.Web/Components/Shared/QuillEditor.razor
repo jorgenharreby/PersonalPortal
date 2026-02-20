@@ -1,0 +1,95 @@
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div id="@EditorId" style="min-height: 300px;"></div>
+
+@code {
+    [Parameter]
+    public string EditorId { get; set; } = $"quill-editor-{Guid.NewGuid():N}";
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    private DotNetObjectReference<QuillEditor>? dotNetHelper;
+    private bool initialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                dotNetHelper = DotNetObjectReference.Create(this);
+                var success = await JSRuntime.InvokeAsync<bool>("quillInterop.createQuill", EditorId, ReadOnly, dotNetHelper);
+                
+                if (success && !string.IsNullOrEmpty(Value))
+                {
+                    await JSRuntime.InvokeVoidAsync("quillInterop.setQuillContent", EditorId, Value);
+                }
+                
+                initialized = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing Quill: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnContentChanged(string html)
+    {
+        Value = html;
+        await ValueChanged.InvokeAsync(html);
+    }
+
+    public async Task<string> GetContent()
+    {
+        if (!initialized) return Value;
+        
+        try
+        {
+            return await JSRuntime.InvokeAsync<string>("quillInterop.getQuillContent", EditorId);
+        }
+        catch
+        {
+            return Value;
+        }
+    }
+
+    public async Task SetContent(string html)
+    {
+        Value = html;
+        if (initialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("quillInterop.setQuillContent", EditorId, html);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting content: {ex.Message}");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (initialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("quillInterop.destroyQuill", EditorId);
+            }
+            catch { }
+        }
+        
+        dotNetHelper?.Dispose();
+    }
+}

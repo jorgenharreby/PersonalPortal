@@ -1,0 +1,298 @@
+@page "/recipes/new"
+@page "/recipes/edit/{id:guid}"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == Guid.Empty ? "New" : "Edit") Recipe</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container">
+        <h1>@(Id == Guid.Empty ? "New" : "Edit") Recipe</h1>
+
+        @if (recipe == null)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@recipe" OnValidSubmit="@HandleSubmit">
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="recipe.Name" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Type</label>
+                    <InputText class="form-control" @bind-Value="recipe.Type" placeholder="e.g., Breakfast, Lunch, Dinner, Dessert" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Recipe Text</label>
+                    <QuillEditor @ref="quillEditor" 
+                                 Value="@recipe.RecipeText" 
+                                 ValueChanged="@OnRecipeTextChanged" />
+                    <small class="text-muted">Use the toolbar above to format your recipe with bold, lists, headings, etc.</small>
+                </div>
+                
+                <!-- Pictures Section -->
+                <div class="mb-3">
+                    <label class="form-label">Pictures</label>
+                    
+                    @if (recipe.Pictures.Any())
+                    {
+                        <div class="row mb-3">
+                            @foreach (var picture in recipe.Pictures)
+                            {
+                                <div class="col-md-3 mb-2">
+                                    <div class="card">
+                                        <img src="data:image/jpeg;base64,@Convert.ToBase64String(picture.ImageData)" 
+                                             class="card-img-top" 
+                                             alt="@picture.Caption"
+                                             style="height: 150px; object-fit: cover;">
+                                        <div class="card-body p-2">
+                                            @if (!string.IsNullOrEmpty(picture.Caption))
+                                            {
+                                                <small class="d-block mb-2">@picture.Caption</small>
+                                            }
+                                            <button type="button" class="btn btn-sm btn-danger w-100" @onclick="() => RemovePicture(picture.Id)">
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Add New Picture -->
+                    <div class="card">
+                        <div class="card-header">
+                            <strong>Add New Picture</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Select Picture</label>
+                                        <InputFile id="pictureFileInput" class="form-control" OnChange="@OnFileSelected" accept="image/*" />
+                                        @if (!string.IsNullOrEmpty(uploadErrorMessage))
+                                        {
+                                            <div class="alert alert-danger mt-2">@uploadErrorMessage</div>
+                                        }
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Caption</label>
+                                        <input type="text" class="form-control" @bind="newPictureCaption" placeholder="Enter caption for this picture" />
+                                    </div>
+                                    <button type="button" class="btn btn-secondary" @onclick="AddPictureToRecipe" disabled="@(newPictureData == null || newPictureData.Length == 0)">
+                                        Add Picture
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    @if (newPictureData != null && newPictureData.Length > 0)
+                                    {
+                                        <div>
+                                            <label class="form-label">Preview</label>
+                                            <img src="data:image/jpeg;base64,@Convert.ToBase64String(newPictureData)" 
+                                                 class="img-thumbnail w-100" 
+                                                 alt="Preview"
+                                                 style="max-height: 250px; object-fit: contain;">
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">Save Recipe</button>
+                    <a href="/recipes" class="btn btn-secondary">Cancel</a>
+                </div>
+            </EditForm>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Recipe? recipe;
+    private QuillEditor? quillEditor;
+    private byte[]? newPictureData;
+    private string newPictureFileName = string.Empty;
+    private string newPictureCaption = string.Empty;
+    private string uploadErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id == Guid.Empty)
+        {
+            recipe = new Recipe { Pictures = new List<Picture>() };
+        }
+        else
+        {
+            recipe = await ApiService.GetRecipeByIdAsync(Id);
+        }
+    }
+
+    private void OnRecipeTextChanged(string html)
+    {
+        if (recipe != null)
+        {
+            recipe.RecipeText = html;
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadErrorMessage = string.Empty;
+        
+        try
+        {
+            var file = e.File;
+            
+            if (file.Size > 5 * 1024 * 1024) // 5MB limit
+            {
+                uploadErrorMessage = "File size must be less than 5MB";
+                return;
+            }
+
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(memoryStream);
+            
+            newPictureData = memoryStream.ToArray();
+            newPictureFileName = file.Name;
+        }
+        catch (Exception ex)
+        {
+            uploadErrorMessage = $"Error loading file: {ex.Message}";
+        }
+    }
+
+    private async Task AddPictureToRecipe()
+    {
+        if (recipe == null || newPictureData == null || newPictureData.Length == 0)
+            return;
+
+        var newPicture = new Picture
+        {
+            Id = Guid.NewGuid(),
+            FileName = newPictureFileName,
+            ImageData = newPictureData,
+            Caption = newPictureCaption,
+            RecipeId = Id == Guid.Empty ? null : Id,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+
+        recipe.Pictures.Add(newPicture);
+
+        // Reset the form
+        newPictureData = null;
+        newPictureFileName = string.Empty;
+        newPictureCaption = string.Empty;
+        uploadErrorMessage = string.Empty;
+
+        // Clear the file input
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("quillInterop.clearFileInput", "pictureFileInput");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error clearing file input: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemovePicture(Guid pictureId)
+    {
+        if (recipe == null)
+            return;
+
+        var picture = recipe.Pictures.FirstOrDefault(p => p.Id == pictureId);
+        if (picture != null)
+        {
+            recipe.Pictures.Remove(picture);
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (recipe == null) return;
+
+        // Get the latest content from Quill editor
+        if (quillEditor != null)
+        {
+            recipe.RecipeText = await quillEditor.GetContent();
+        }
+
+        if (Id == Guid.Empty)
+        {
+            // Create new recipe
+            var newRecipeId = await ApiService.CreateRecipeAsync(recipe);
+            
+            // Create associated pictures
+            if (newRecipeId.HasValue && recipe.Pictures.Any())
+            {
+                foreach (var picture in recipe.Pictures)
+                {
+                    picture.RecipeId = newRecipeId.Value;
+                    await ApiService.CreatePictureAsync(picture);
+                }
+            }
+        }
+        else
+        {
+            // Update recipe
+            await ApiService.UpdateRecipeAsync(Id, recipe);
+            
+            // Get existing pictures for this recipe
+            var existingPictures = await ApiService.GetPicturesByRecipeIdAsync(Id);
+            
+            // Delete pictures that were removed
+            foreach (var existingPicture in existingPictures)
+            {
+                if (!recipe.Pictures.Any(p => p.Id == existingPicture.Id))
+                {
+                    await ApiService.DeletePictureAsync(existingPicture.Id);
+                }
+            }
+            
+            // Add or update pictures
+            foreach (var picture in recipe.Pictures)
+            {
+                picture.RecipeId = Id;
+                
+                if (existingPictures.Any(p => p.Id == picture.Id))
+                {
+                    // Update existing picture
+                    await ApiService.UpdatePictureAsync(picture.Id, picture);
+                }
+                else
+                {
+                    // Create new picture
+                    await ApiService.CreatePictureAsync(picture);
+                }
+            }
+        }
+
+        Navigation.NavigateTo("/recipes");
+    }
+}

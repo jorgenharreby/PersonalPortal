@@ -1,0 +1,255 @@
+﻿@page "/"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Personal Portal</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="container mt-5">
+        <div class="alert alert-info text-center">
+            <h4>Welcome to Personal Portal</h4>
+            <p>Please <a href="/login" class="alert-link">login</a> to access your content.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-fluid">
+        <h1 class="mb-4">Welcome, @AuthService.CurrentUser?.DisplayName!</h1>
+        
+        <div class="row g-4">
+            <!-- Text Notes Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Latest Text Notes</h5>
+                        <div>
+                            <a href="/textnotes/new" class="btn btn-sm btn-success me-2">Add</a>
+                            <a href="/textnotes" class="btn btn-sm btn-primary">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (latestTextNotes == null)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        }
+                        else if (!latestTextNotes.Any())
+                        {
+                            <p class="text-muted">No text notes yet.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var note in latestTextNotes)
+                                {
+                                    <li class="list-group-item">
+                                        <a href="/textnotes/@note.Id">@note.Name</a>
+                                        <small class="text-muted d-block">Updated: @note.Updated.ToLocalTime().ToString("g")</small>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Checklists Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Latest Checklists</h5>
+                        <div>
+                            <a href="/checklists/new" class="btn btn-sm btn-success me-2">Add</a>
+                            <a href="/checklists" class="btn btn-sm btn-primary">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (latestChecklists == null)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        }
+                        else if (!latestChecklists.Any())
+                        {
+                            <p class="text-muted">No checklists yet.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var checklist in latestChecklists)
+                                {
+                                    <li class="list-group-item">
+                                        <a href="/checklists/@checklist.Id">@checklist.Name</a>
+                                        <span class="badge bg-secondary ms-2">@checklist.Type</span>
+                                        <small class="text-muted d-block">Updated: @checklist.Updated.ToLocalTime().ToString("g")</small>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipes Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Latest Recipes</h5>
+                        <div>
+                            <a href="/recipes/new" class="btn btn-sm btn-success me-2">Add</a>
+                            <a href="/recipes" class="btn btn-sm btn-primary">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (latestRecipes == null)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        }
+                        else if (!latestRecipes.Any())
+                        {
+                            <p class="text-muted">No recipes yet.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var recipe in latestRecipes)
+                                {
+                                    <li class="list-group-item">
+                                        <a href="/recipes/@recipe.Id">@recipe.Name</a>
+                                        <span class="badge bg-secondary ms-2">@recipe.Type</span>
+                                        <small class="text-muted d-block">Updated: @recipe.Updated.ToLocalTime().ToString("g")</small>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pictures Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Latest Pictures</h5>
+                        <div>
+                            <a href="/pictures/new" class="btn btn-sm btn-success me-2">Add</a>
+                            <a href="/pictures" class="btn btn-sm btn-primary">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (latestPictures == null)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        }
+                        else if (!latestPictures.Any())
+                        {
+                            <p class="text-muted">No pictures yet.</p>
+                        }
+                        else
+                        {
+                            <div id="pictureCarousel" class="carousel slide" data-bs-ride="carousel">
+                                <div class="carousel-inner">
+                                    @for (int i = 0; i < latestPictures.Count; i++)
+                                    {
+                                        var picture = latestPictures[i];
+                                        <div class="carousel-item @(i == 0 ? "active" : "")">
+                                            <img src="data:image/jpeg;base64,@Convert.ToBase64String(picture.ImageData)" 
+                                                 class="d-block w-100" 
+                                                 alt="@picture.Caption"
+                                                 style="max-height: 400px; object-fit: contain;">
+                                            @if (!string.IsNullOrEmpty(picture.Caption))
+                                            {
+                                                <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50">
+                                                    <p>@picture.Caption</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <button class="carousel-control-prev" type="button" data-bs-target="#pictureCarousel" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Previous</span>
+                                </button>
+                                <button class="carousel-control-next" type="button" data-bs-target="#pictureCarousel" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Next</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TextNote>? latestTextNotes;
+    private List<Checklist>? latestChecklists;
+    private List<Recipe>? latestRecipes;
+    private List<Picture>? latestPictures;
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += OnAuthStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AuthService.IsAuthenticated)
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadDataAsync();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            latestTextNotes = await ApiService.GetLatestTextNotesAsync(3);
+            latestChecklists = await ApiService.GetLatestChecklistsAsync(3);
+            latestRecipes = await ApiService.GetLatestRecipesAsync(3);
+            latestPictures = await ApiService.GetLatestPicturesAsync(10);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= OnAuthStateChanged;
+    }
+}

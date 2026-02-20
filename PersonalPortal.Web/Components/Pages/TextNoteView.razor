@@ -1,0 +1,45 @@
+@page "/textnotes/{id:guid}"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject ApiService ApiService
+@rendermode InteractiveServer
+
+<PageTitle>@(note?.Name ?? "Text Note")</PageTitle>
+
+<div class="container">
+    @if (note == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <div class="mb-4">
+            <a href="/textnotes" class="btn btn-secondary">Back to List</a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>@note.Name</h2>
+                <small class="text-muted">
+                    Created: @note.Created.ToLocalTime().ToString("g") | 
+                    Updated: @note.Updated.ToLocalTime().ToString("g")
+                </small>
+            </div>
+            <div class="card-body">
+                <pre style="white-space: pre-wrap; font-family: inherit;">@note.Content</pre>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private TextNote? note;
+
+    protected override async Task OnInitializedAsync()
+    {
+        note = await ApiService.GetTextNoteByIdAsync(Id);
+    }
+}

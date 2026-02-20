@@ -1,0 +1,168 @@
+@page "/checklists"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Checklists</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Checklists</h1>
+            <a href="/checklists/new" class="btn btn-success">Add New Checklist</a>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Search checklists..." @bind="searchTerm" @bind:event="oninput" />
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" @bind="filterType">
+                    <option value="">All Types</option>
+                    @foreach (var type in types)
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (filteredChecklists == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (!filteredChecklists.Any())
+        {
+            <p class="text-muted">No checklists found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th @onclick="() => SortBy(nameof(Checklist.Name))" style="cursor: pointer;">
+                                Name @GetSortIcon(nameof(Checklist.Name))
+                            </th>
+                            <th @onclick="() => SortBy(nameof(Checklist.Type))" style="cursor: pointer;">
+                                Type @GetSortIcon(nameof(Checklist.Type))
+                            </th>
+                            <th>Items</th>
+                            <th @onclick="() => SortBy(nameof(Checklist.Created))" style="cursor: pointer;">
+                                Created @GetSortIcon(nameof(Checklist.Created))
+                            </th>
+                            <th @onclick="() => SortBy(nameof(Checklist.Updated))" style="cursor: pointer;">
+                                Updated @GetSortIcon(nameof(Checklist.Updated))
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var checklist in filteredChecklists)
+                        {
+                            <tr>
+                                <td><a href="/checklists/@checklist.Id">@checklist.Name</a></td>
+                                <td><span class="badge bg-secondary">@checklist.Type</span></td>
+                                <td>@checklist.Items.Count</td>
+                                <td>@checklist.Created.ToLocalTime().ToString("g")</td>
+                                <td>@checklist.Updated.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    <a href="/checklists/edit/@checklist.Id" class="btn btn-sm btn-primary">Edit</a>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteChecklist(checklist.Id)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Checklist>? allChecklists;
+    private List<Checklist>? filteredChecklists;
+    private List<string> types = new();
+    private string searchTerm = string.Empty;
+    private string filterType = string.Empty;
+    private string sortColumn = nameof(Checklist.Updated);
+    private bool sortAscending = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadChecklistsAsync();
+        }
+    }
+
+    private async Task LoadChecklistsAsync()
+    {
+        allChecklists = await ApiService.GetAllChecklistsAsync();
+        types = allChecklists.Select(c => c.Type).Distinct().OrderBy(t => t).ToList();
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        if (allChecklists == null) return;
+
+        filteredChecklists = allChecklists.Where(c => 
+            (string.IsNullOrEmpty(searchTerm) || c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filterType) || c.Type == filterType))
+            .ToList();
+
+        filteredChecklists = sortColumn switch
+        {
+            nameof(Checklist.Name) => sortAscending 
+                ? filteredChecklists.OrderBy(c => c.Name).ToList()
+                : filteredChecklists.OrderByDescending(c => c.Name).ToList(),
+            nameof(Checklist.Type) => sortAscending 
+                ? filteredChecklists.OrderBy(c => c.Type).ToList()
+                : filteredChecklists.OrderByDescending(c => c.Type).ToList(),
+            nameof(Checklist.Created) => sortAscending 
+                ? filteredChecklists.OrderBy(c => c.Created).ToList()
+                : filteredChecklists.OrderByDescending(c => c.Created).ToList(),
+            nameof(Checklist.Updated) => sortAscending 
+                ? filteredChecklists.OrderBy(c => c.Updated).ToList()
+                : filteredChecklists.OrderByDescending(c => c.Updated).ToList(),
+            _ => filteredChecklists
+        };
+
+        StateHasChanged();
+    }
+
+    private void SortBy(string column)
+    {
+        if (sortColumn == column)
+        {
+            sortAscending = !sortAscending;
+        }
+        else
+        {
+            sortColumn = column;
+            sortAscending = true;
+        }
+        ApplyFiltersAndSort();
+    }
+
+    private string GetSortIcon(string column)
+    {
+        if (sortColumn != column) return "?";
+        return sortAscending ? "?" : "?";
+    }
+
+    private async Task DeleteChecklist(Guid id)
+    {
+        await ApiService.DeleteChecklistAsync(id);
+        await LoadChecklistsAsync();
+    }
+}

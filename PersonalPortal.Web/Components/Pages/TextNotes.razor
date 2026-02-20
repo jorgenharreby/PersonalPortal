@@ -1,0 +1,155 @@
+@page "/textnotes"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Text Notes</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Text Notes</h1>
+            <a href="/textnotes/new" class="btn btn-success">Add New Note</a>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <input type="text" class="form-control" placeholder="Search notes..." @bind="searchTerm" @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (filteredNotes == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (!filteredNotes.Any())
+        {
+            <p class="text-muted">No text notes found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th @onclick="() => SortBy(nameof(TextNote.Name))" style="cursor: pointer;">
+                                Name @GetSortIcon(nameof(TextNote.Name))
+                            </th>
+                            <th @onclick="() => SortBy(nameof(TextNote.Created))" style="cursor: pointer;">
+                                Created @GetSortIcon(nameof(TextNote.Created))
+                            </th>
+                            <th @onclick="() => SortBy(nameof(TextNote.Updated))" style="cursor: pointer;">
+                                Updated @GetSortIcon(nameof(TextNote.Updated))
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var note in filteredNotes)
+                        {
+                            <tr>
+                                <td><a href="/textnotes/@note.Id">@note.Name</a></td>
+                                <td>@note.Created.ToLocalTime().ToString("g")</td>
+                                <td>@note.Updated.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    <a href="/textnotes/edit/@note.Id" class="btn btn-sm btn-primary">Edit</a>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteNote(note.Id)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<TextNote>? allNotes;
+    private List<TextNote>? filteredNotes;
+    private string searchTerm = string.Empty;
+    private string sortColumn = nameof(TextNote.Updated);
+    private bool sortAscending = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadNotesAsync();
+        }
+    }
+
+    private async Task LoadNotesAsync()
+    {
+        allNotes = await ApiService.GetAllTextNotesAsync();
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        if (allNotes == null) return;
+
+        filteredNotes = allNotes.Where(n => 
+            string.IsNullOrEmpty(searchTerm) || 
+            n.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        filteredNotes = sortColumn switch
+        {
+            nameof(TextNote.Name) => sortAscending 
+                ? filteredNotes.OrderBy(n => n.Name).ToList()
+                : filteredNotes.OrderByDescending(n => n.Name).ToList(),
+            nameof(TextNote.Created) => sortAscending 
+                ? filteredNotes.OrderBy(n => n.Created).ToList()
+                : filteredNotes.OrderByDescending(n => n.Created).ToList(),
+            nameof(TextNote.Updated) => sortAscending 
+                ? filteredNotes.OrderBy(n => n.Updated).ToList()
+                : filteredNotes.OrderByDescending(n => n.Updated).ToList(),
+            _ => filteredNotes
+        };
+
+        StateHasChanged();
+    }
+
+    private void SortBy(string column)
+    {
+        if (sortColumn == column)
+        {
+            sortAscending = !sortAscending;
+        }
+        else
+        {
+            sortColumn = column;
+            sortAscending = true;
+        }
+        ApplyFiltersAndSort();
+    }
+
+    private string GetSortIcon(string column)
+    {
+        if (sortColumn != column) return "?";
+        return sortAscending ? "?" : "?";
+    }
+
+    private async Task DeleteNote(Guid id)
+    {
+        if (confirm("Are you sure you want to delete this note?"))
+        {
+            await ApiService.DeleteTextNoteAsync(id);
+            await LoadNotesAsync();
+        }
+    }
+
+    private bool confirm(string message)
+    {
+        return true;
+    }
+}

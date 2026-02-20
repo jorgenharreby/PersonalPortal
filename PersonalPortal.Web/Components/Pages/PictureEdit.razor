@@ -1,0 +1,176 @@
+@page "/pictures/new"
+@page "/pictures/edit/{id:guid}"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == Guid.Empty ? "New" : "Edit") Picture</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container">
+        <h1>@(Id == Guid.Empty ? "New" : "Edit") Picture</h1>
+
+        @if (picture == null)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@picture" OnValidSubmit="@HandleSubmit">
+                @if (Id == Guid.Empty)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Select Picture</label>
+                        <InputFile class="form-control" OnChange="@OnFileSelected" accept="image/*" />
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mt-2">@errorMessage</div>
+                        }
+                    </div>
+                }
+
+                @if (picture.ImageData != null && picture.ImageData.Length > 0)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Preview</label>
+                        <div>
+                            <img src="data:image/jpeg;base64,@Convert.ToBase64String(picture.ImageData)" 
+                                 class="img-thumbnail" 
+                                 alt="Preview"
+                                 style="max-height: 300px;">
+                        </div>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Caption</label>
+                    <InputText class="form-control" @bind-Value="picture.Caption" placeholder="Enter a caption for the picture" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Link to Recipe (Optional)</label>
+                    <select class="form-select" @bind="selectedRecipeId">
+                        <option value="">-- No Recipe --</option>
+                        @foreach (var recipe in recipes)
+                        {
+                            <option value="@recipe.Id">@recipe.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" disabled="@(Id == Guid.Empty && (picture.ImageData == null || picture.ImageData.Length == 0))">
+                        Save
+                    </button>
+                    <a href="/pictures" class="btn btn-secondary">Cancel</a>
+                </div>
+            </EditForm>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Picture? picture;
+    private List<Recipe> recipes = new();
+    private string selectedRecipeId = "";
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipes = await ApiService.GetAllRecipesAsync();
+
+        if (Id == Guid.Empty)
+        {
+            picture = new Picture 
+            { 
+                FileName = string.Empty,
+                Caption = string.Empty,
+                ImageData = Array.Empty<byte>()
+            };
+        }
+        else
+        {
+            picture = await ApiService.GetPictureByIdAsync(Id);
+            if (picture != null && picture.RecipeId.HasValue)
+            {
+                selectedRecipeId = picture.RecipeId.Value.ToString();
+            }
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = string.Empty;
+        
+        try
+        {
+            var file = e.File;
+            
+            if (file.Size > 5 * 1024 * 1024) // 5MB limit
+            {
+                errorMessage = "File size must be less than 5MB";
+                return;
+            }
+
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(memoryStream);
+            
+            if (picture != null)
+            {
+                picture.ImageData = memoryStream.ToArray();
+                picture.FileName = file.Name;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading file: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (picture == null) return;
+
+        // Set recipe ID from dropdown
+        if (!string.IsNullOrEmpty(selectedRecipeId) && Guid.TryParse(selectedRecipeId, out Guid recipeId))
+        {
+            picture.RecipeId = recipeId;
+        }
+        else
+        {
+            picture.RecipeId = null;
+        }
+
+        if (Id == Guid.Empty)
+        {
+            if (picture.ImageData == null || picture.ImageData.Length == 0)
+            {
+                errorMessage = "Please select an image file";
+                return;
+            }
+            await ApiService.CreatePictureAsync(picture);
+        }
+        else
+        {
+            await ApiService.UpdatePictureAsync(Id, picture);
+        }
+
+        Navigation.NavigateTo("/pictures");
+    }
+}

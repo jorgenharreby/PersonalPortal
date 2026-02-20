@@ -1,0 +1,6 @@
+@PersonalPortal.API_HostAddress = http://localhost:5250
+
+GET {{PersonalPortal.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

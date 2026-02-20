@@ -1,0 +1,98 @@
+@page "/pictures"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Pictures</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Pictures</h1>
+            <a href="/pictures/new" class="btn btn-success">Add New Picture</a>
+        </div>
+
+        @if (pictures == null)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (!pictures.Any())
+        {
+            <p class="text-muted">No pictures yet.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var picture in pictures)
+                {
+                    <div class="col-md-3">
+                        <div class="card h-100">
+                            <img src="data:image/jpeg;base64,@Convert.ToBase64String(picture.ImageData)" 
+                                 class="card-img-top" 
+                                 alt="@picture.Caption"
+                                 style="height: 200px; object-fit: cover; cursor: pointer;"
+                                 @onclick="() => ViewPicture(picture.Id)">
+                            <div class="card-body">
+                                @if (!string.IsNullOrEmpty(picture.Caption))
+                                {
+                                    <p class="card-text"><strong>@picture.Caption</strong></p>
+                                }
+                                @if (picture.RecipeId.HasValue)
+                                {
+                                    <small class="text-muted">Linked to recipe</small>
+                                }
+                                <div class="mt-2">
+                                    <small class="text-muted d-block">@picture.Updated.ToLocalTime().ToString("g")</small>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <a href="/pictures/edit/@picture.Id" class="btn btn-sm btn-primary">Edit</a>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeletePicture(picture.Id)">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Picture>? pictures;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadPicturesAsync();
+        }
+    }
+
+    private async Task LoadPicturesAsync()
+    {
+        pictures = await ApiService.GetAllPicturesAsync();
+    }
+
+    private void ViewPicture(Guid id)
+    {
+        Navigation.NavigateTo($"/pictures/{id}");
+    }
+
+    private async Task DeletePicture(Guid id)
+    {
+        await ApiService.DeletePictureAsync(id);
+        await LoadPicturesAsync();
+    }
+}

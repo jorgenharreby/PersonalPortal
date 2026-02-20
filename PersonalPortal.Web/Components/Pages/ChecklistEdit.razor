@@ -1,0 +1,110 @@
+@page "/checklists/new"
+@page "/checklists/edit/{id:guid}"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == Guid.Empty ? "New" : "Edit") Checklist</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container">
+        <h1>@(Id == Guid.Empty ? "New" : "Edit") Checklist</h1>
+
+        @if (checklist == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <EditForm Model="@checklist" OnValidSubmit="@HandleSubmit">
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="checklist.Name" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Type</label>
+                    <InputText class="form-control" @bind-Value="checklist.Type" placeholder="e.g., Shopping, Travel, Tasks" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Items</label>
+                    @foreach (var item in checklist.Items)
+                    {
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" placeholder="Item Name" @bind="item.ItemName" />
+                                    </div>
+                                    <div class="col-md-7">
+                                        <input type="text" class="form-control" placeholder="Description" @bind="item.Description" />
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger" @onclick="() => RemoveItem(item)">×</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <button type="button" class="btn btn-secondary" @onclick="AddItem">Add Item</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a href="/checklists" class="btn btn-secondary">Cancel</a>
+                </div>
+            </EditForm>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Checklist? checklist;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id == Guid.Empty)
+        {
+            checklist = new Checklist { Items = new List<ChecklistItem>() };
+        }
+        else
+        {
+            checklist = await ApiService.GetChecklistByIdAsync(Id);
+        }
+    }
+
+    private void AddItem()
+    {
+        checklist?.Items.Add(new ChecklistItem());
+    }
+
+    private void RemoveItem(ChecklistItem item)
+    {
+        checklist?.Items.Remove(item);
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (checklist == null) return;
+
+        if (Id == Guid.Empty)
+        {
+            await ApiService.CreateChecklistAsync(checklist);
+        }
+        else
+        {
+            await ApiService.UpdateChecklistAsync(Id, checklist);
+        }
+
+        Navigation.NavigateTo("/checklists");
+    }
+}

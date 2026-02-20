@@ -1,0 +1,172 @@
+@page "/recipes"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Recipes</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+}
+else
+{
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Recipes</h1>
+            <a href="/recipes/new" class="btn btn-success">Add New Recipe</a>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Search recipes..." @bind="searchTerm" @bind:event="oninput" @onkeyup="ApplyFiltersAndSort" />
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" @bind="filterType" @bind:after="ApplyFiltersAndSort">
+                    <option value="">All Types</option>
+                    @foreach (var type in types)
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (filteredRecipes == null)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (!filteredRecipes.Any())
+        {
+            <p class="text-muted">No recipes found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th @onclick="() => SortBy(nameof(Recipe.Name))" style="cursor: pointer;">
+                                Name @GetSortIcon(nameof(Recipe.Name))
+                            </th>
+                            <th @onclick="() => SortBy(nameof(Recipe.Type))" style="cursor: pointer;">
+                                Type @GetSortIcon(nameof(Recipe.Type))
+                            </th>
+                            <th>Pictures</th>
+                            <th @onclick="() => SortBy(nameof(Recipe.Created))" style="cursor: pointer;">
+                                Created @GetSortIcon(nameof(Recipe.Created))
+                            </th>
+                            <th @onclick="() => SortBy(nameof(Recipe.Updated))" style="cursor: pointer;">
+                                Updated @GetSortIcon(nameof(Recipe.Updated))
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var recipe in filteredRecipes)
+                        {
+                            <tr>
+                                <td><a href="/recipes/@recipe.Id">@recipe.Name</a></td>
+                                <td><span class="badge bg-secondary">@recipe.Type</span></td>
+                                <td>@recipe.Pictures.Count</td>
+                                <td>@recipe.Created.ToLocalTime().ToString("g")</td>
+                                <td>@recipe.Updated.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    <a href="/recipes/edit/@recipe.Id" class="btn btn-sm btn-primary">Edit</a>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteRecipe(recipe.Id)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Recipe>? allRecipes;
+    private List<Recipe>? filteredRecipes;
+    private List<string> types = new();
+    private string searchTerm = string.Empty;
+    private string filterType = string.Empty;
+    private string sortColumn = nameof(Recipe.Updated);
+    private bool sortAscending = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadRecipesAsync();
+        }
+    }
+
+    private async Task LoadRecipesAsync()
+    {
+        allRecipes = await ApiService.GetAllRecipesAsync();
+        types = allRecipes.Select(r => r.Type).Distinct().OrderBy(t => t).ToList();
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        if (allRecipes == null) return;
+
+        filteredRecipes = allRecipes.Where(r => 
+            (string.IsNullOrEmpty(searchTerm) || r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filterType) || r.Type == filterType))
+            .ToList();
+
+        filteredRecipes = sortColumn switch
+        {
+            nameof(Recipe.Name) => sortAscending 
+                ? filteredRecipes.OrderBy(r => r.Name).ToList()
+                : filteredRecipes.OrderByDescending(r => r.Name).ToList(),
+            nameof(Recipe.Type) => sortAscending 
+                ? filteredRecipes.OrderBy(r => r.Type).ToList()
+                : filteredRecipes.OrderByDescending(r => r.Type).ToList(),
+            nameof(Recipe.Created) => sortAscending 
+                ? filteredRecipes.OrderBy(r => r.Created).ToList()
+                : filteredRecipes.OrderByDescending(r => r.Created).ToList(),
+            nameof(Recipe.Updated) => sortAscending 
+                ? filteredRecipes.OrderBy(r => r.Updated).ToList()
+                : filteredRecipes.OrderByDescending(r => r.Updated).ToList(),
+            _ => filteredRecipes
+        };
+
+        StateHasChanged();
+    }
+
+    private void SortBy(string column)
+    {
+        if (sortColumn == column)
+        {
+            sortAscending = !sortAscending;
+        }
+        else
+        {
+            sortColumn = column;
+            sortAscending = true;
+        }
+        ApplyFiltersAndSort();
+    }
+
+    private string GetSortIcon(string column)
+    {
+        if (sortColumn != column) return "?";
+        return sortAscending ? "?" : "?";
+    }
+
+    private async Task DeleteRecipe(Guid id)
+    {
+        await ApiService.DeleteRecipeAsync(id);
+        await LoadRecipesAsync();
+    }
+}

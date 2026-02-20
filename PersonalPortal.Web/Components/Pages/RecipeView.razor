@@ -1,0 +1,115 @@
+@page "/recipes/{id:guid}"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject ApiService ApiService
+@rendermode InteractiveServer
+
+<PageTitle>@(recipe?.Name ?? "Recipe")</PageTitle>
+
+<div class="container">
+    @if (recipe == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="mb-4">
+            <a href="/recipes" class="btn btn-secondary">Back to List</a>
+            <a href="/recipes/edit/@recipe.Id" class="btn btn-primary">Edit</a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>@recipe.Name</h2>
+                <span class="badge bg-secondary">@recipe.Type</span>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Created: @recipe.Created.ToLocalTime().ToString("g") | 
+                        Updated: @recipe.Updated.ToLocalTime().ToString("g")
+                    </small>
+                </div>
+            </div>
+            <div class="card-body">
+                <h5>Recipe:</h5>
+                @if (!string.IsNullOrEmpty(recipe.RecipeText))
+                {
+                    <div class="recipe-text mb-4">
+                        @((MarkupString)recipe.RecipeText)
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No recipe text available.</p>
+                }
+
+                @if (pictures == null)
+                {
+                    <div class="text-center my-3">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading pictures...</span>
+                        </div>
+                    </div>
+                }
+                else if (pictures.Any())
+                {
+                    <h5>Pictures:</h5>
+                    <div class="row">
+                        @foreach (var picture in pictures)
+                        {
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <img src="data:image/jpeg;base64,@Convert.ToBase64String(picture.ImageData)" 
+                                         class="card-img-top" 
+                                         alt="@picture.Caption"
+                                         style="height: 250px; object-fit: cover; cursor: pointer;"
+                                         @onclick="() => ViewPicture(picture.Id)">
+                                    @if (!string.IsNullOrEmpty(picture.Caption))
+                                    {
+                                        <div class="card-body">
+                                            <p class="card-text">@picture.Caption</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No pictures for this recipe.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Recipe? recipe;
+    private List<Picture>? pictures;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipe = await ApiService.GetRecipeByIdAsync(Id);
+        
+        if (recipe != null)
+        {
+            // Load pictures separately
+            pictures = await ApiService.GetPicturesByRecipeIdAsync(Id);
+        }
+    }
+
+    private void ViewPicture(Guid pictureId)
+    {
+        Navigation.NavigateTo($"/pictures/{pictureId}");
+    }
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+}

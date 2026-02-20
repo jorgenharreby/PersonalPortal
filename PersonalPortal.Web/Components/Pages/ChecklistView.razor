@@ -1,0 +1,67 @@
+@page "/checklists/{id:guid}"
+@using PersonalPortal.Core.Models
+@using PersonalPortal.Web.Services
+@inject ApiService ApiService
+@rendermode InteractiveServer
+
+<PageTitle>@(checklist?.Name ?? "Checklist")</PageTitle>
+
+<div class="container">
+    @if (checklist == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <div class="mb-4">
+            <a href="/checklists" class="btn btn-secondary">Back to List</a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>@checklist.Name</h2>
+                <span class="badge bg-secondary">@checklist.Type</span>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Created: @checklist.Created.ToLocalTime().ToString("g") | 
+                        Updated: @checklist.Updated.ToLocalTime().ToString("g")
+                    </small>
+                </div>
+            </div>
+            <div class="card-body">
+                <h5>Items:</h5>
+                @if (checklist.Items.Any())
+                {
+                    <ul class="list-group">
+                        @foreach (var item in checklist.Items)
+                        {
+                            <li class="list-group-item">
+                                <strong>@item.ItemName</strong>
+                                @if (!string.IsNullOrEmpty(item.Description))
+                                {
+                                    <p class="mb-0 mt-1 text-muted">@item.Description</p>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">No items in this checklist.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Checklist? checklist;
+
+    protected override async Task OnInitializedAsync()
+    {
+        checklist = await ApiService.GetChecklistByIdAsync(Id);
+    }
+}
