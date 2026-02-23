@@ -24,7 +24,7 @@ public class ChecklistRepository : IChecklistRepository
         if (checklist != null)
         {
             checklist.Items = (await connection.QueryAsync<ChecklistItem>(
-                "SELECT Id, ChecklistId, ItemName, Description FROM ChecklistItems WHERE ChecklistId = @ChecklistId",
+                "SELECT Id, ChecklistId, ItemName, Description, ItemGroup FROM ChecklistItems WHERE ChecklistId = @ChecklistId ORDER BY ItemGroup, ItemName",
                 new { ChecklistId = id })).ToList();
         }
         
@@ -40,7 +40,7 @@ public class ChecklistRepository : IChecklistRepository
         foreach (var checklist in checklists)
         {
             checklist.Items = (await connection.QueryAsync<ChecklistItem>(
-                "SELECT Id, ChecklistId, ItemName, Description FROM ChecklistItems WHERE ChecklistId = @ChecklistId",
+                "SELECT Id, ChecklistId, ItemName, Description, ItemGroup FROM ChecklistItems WHERE ChecklistId = @ChecklistId ORDER BY ItemGroup, ItemName",
                 new { ChecklistId = checklist.Id })).ToList();
         }
         
@@ -57,7 +57,7 @@ public class ChecklistRepository : IChecklistRepository
         foreach (var checklist in checklists)
         {
             checklist.Items = (await connection.QueryAsync<ChecklistItem>(
-                "SELECT Id, ChecklistId, ItemName, Description FROM ChecklistItems WHERE ChecklistId = @ChecklistId",
+                "SELECT Id, ChecklistId, ItemName, Description, ItemGroup FROM ChecklistItems WHERE ChecklistId = @ChecklistId ORDER BY ItemGroup, ItemName",
                 new { ChecklistId = checklist.Id })).ToList();
         }
         
@@ -74,7 +74,7 @@ public class ChecklistRepository : IChecklistRepository
         foreach (var checklist in checklists)
         {
             checklist.Items = (await connection.QueryAsync<ChecklistItem>(
-                "SELECT Id, ChecklistId, ItemName, Description FROM ChecklistItems WHERE ChecklistId = @ChecklistId",
+                "SELECT Id, ChecklistId, ItemName, Description, ItemGroup FROM ChecklistItems WHERE ChecklistId = @ChecklistId ORDER BY ItemGroup, ItemName",
                 new { ChecklistId = checklist.Id })).ToList();
         }
         
@@ -91,7 +91,7 @@ public class ChecklistRepository : IChecklistRepository
         foreach (var checklist in checklists)
         {
             checklist.Items = (await connection.QueryAsync<ChecklistItem>(
-                "SELECT Id, ChecklistId, ItemName, Description FROM ChecklistItems WHERE ChecklistId = @ChecklistId",
+                "SELECT Id, ChecklistId, ItemName, Description, ItemGroup FROM ChecklistItems WHERE ChecklistId = @ChecklistId ORDER BY ItemGroup, ItemName",
                 new { ChecklistId = checklist.Id })).ToList();
         }
         
@@ -113,7 +113,7 @@ public class ChecklistRepository : IChecklistRepository
         {
             item.ChecklistId = checklist.Id;
             await connection.ExecuteAsync(
-                "INSERT INTO ChecklistItems (ChecklistId, ItemName, Description) VALUES (@ChecklistId, @ItemName, @Description)",
+                "INSERT INTO ChecklistItems (ChecklistId, ItemName, Description, ItemGroup) VALUES (@ChecklistId, @ItemName, @Description, @ItemGroup)",
                 item);
         }
         
@@ -137,7 +137,7 @@ public class ChecklistRepository : IChecklistRepository
         {
             item.ChecklistId = checklist.Id;
             await connection.ExecuteAsync(
-                "INSERT INTO ChecklistItems (ChecklistId, ItemName, Description) VALUES (@ChecklistId, @ItemName, @Description)",
+                "INSERT INTO ChecklistItems (ChecklistId, ItemName, Description, ItemGroup) VALUES (@ChecklistId, @ItemName, @Description, @ItemGroup)",
                 item);
         }
         

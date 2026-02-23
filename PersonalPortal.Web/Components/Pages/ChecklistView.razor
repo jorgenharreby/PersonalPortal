@@ -1,7 +1,10 @@
 @page "/checklists/{id:guid}"
 @using PersonalPortal.Core.Models
 @using PersonalPortal.Web.Services
+@using Microsoft.JSInterop
 @inject ApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <PageTitle>@(checklist?.Name ?? "Checklist")</PageTitle>
@@ -9,12 +12,20 @@
 <div class="container">
     @if (checklist == null)
     {
-        <p>Loading...</p>
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
     }
     else
     {
         <div class="mb-4">
             <a href="/checklists" class="btn btn-secondary">Back to List</a>
+            <a href="/checklists/edit/@checklist.Id" class="btn btn-primary">Edit</a>
+            <button class="btn btn-success" @onclick="DownloadPdf">
+                <i class="bi bi-file-pdf"></i> Download PDF
+            </button>
         </div>
 
         <div class="card">
@@ -29,21 +40,34 @@
                 </div>
             </div>
             <div class="card-body">
-                <h5>Items:</h5>
                 @if (checklist.Items.Any())
                 {
-                    <ul class="list-group">
-                        @foreach (var item in checklist.Items)
-                        {
-                            <li class="list-group-item">
-                                <strong>@item.ItemName</strong>
-                                @if (!string.IsNullOrEmpty(item.Description))
+                    @foreach (var group in GetGroupedItems())
+                    {
+                        <div class="mb-4">
+                            @if (!string.IsNullOrEmpty(group.Key))
+                            {
+                                <h5 class="border-bottom pb-2 mb-3">@group.Key</h5>
+                            }
+                            <ul class="list-group">
+                                @foreach (var item in group.Value)
                                 {
-                                    <p class="mb-0 mt-1 text-muted">@item.Description</p>
+                                    <li class="list-group-item">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="item-@item.Id">
+                                            <label class="form-check-label" for="item-@item.Id">
+                                                <strong>@item.ItemName</strong>
+                                                @if (!string.IsNullOrEmpty(item.Description))
+                                                {
+                                                    <p class="mb-0 mt-1 text-muted">@item.Description</p>
+                                                }
+                                            </label>
+                                        </div>
+                                    </li>
                                 }
-                            </li>
-                        }
-                    </ul>
+                            </ul>
+                        </div>
+                    }
                 }
                 else
                 {
@@ -63,5 +87,23 @@
     protected override async Task OnInitializedAsync()
     {
         checklist = await ApiService.GetChecklistByIdAsync(Id);
+    }
+
+    private Dictionary<string, List<ChecklistItem>> GetGroupedItems()
+    {
+        if (checklist == null || !checklist.Items.Any())
+            return new Dictionary<string, List<ChecklistItem>>();
+
+        return checklist.Items
+            .GroupBy(i => string.IsNullOrWhiteSpace(i.ItemGroup) ? "General" : i.ItemGroup)
+            .OrderBy(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private async Task DownloadPdf()
+    {
+        var apiBaseUrl = Navigation.BaseUri.TrimEnd('/').Replace("7000", "7001");
+        var pdfUrl = $"{apiBaseUrl}/api/checklists/{Id}/pdf";
+        await JSRuntime.InvokeVoidAsync("open", pdfUrl, "_blank");
     }
 }

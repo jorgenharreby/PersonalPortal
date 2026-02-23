@@ -56,6 +56,20 @@ BEGIN
 END
 GO
 
+-- Add ItemGroup column to ChecklistItems if it doesn't exist
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ChecklistItems') AND name = 'ItemGroup')
+BEGIN
+    ALTER TABLE ChecklistItems
+    ADD ItemGroup NVARCHAR(100) NULL;
+END
+GO
+
+-- Update existing items to have a default group
+UPDATE ChecklistItems 
+SET ItemGroup = 'General' 
+WHERE ItemGroup IS NULL;
+GO
+
 -- Recipes Table
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Recipes')
 BEGIN

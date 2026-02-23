@@ -1,4 +1,5 @@
 using PersonalPortal.API.Data;
+using PersonalPortal.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,9 @@ builder.Services.AddScoped<ITextNoteRepository, TextNoteRepository>();
 builder.Services.AddScoped<IChecklistRepository, ChecklistRepository>();
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IPictureRepository, PictureRepository>();
+
+// Register services
+builder.Services.AddScoped<IChecklistPdfService, ChecklistPdfService>();
 
 var app = builder.Build();
 

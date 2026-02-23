@@ -1,9 +1,11 @@
 @page "/checklists"
 @using PersonalPortal.Core.Models
 @using PersonalPortal.Web.Services
+@using Microsoft.JSInterop
 @inject AuthService AuthService
 @inject ApiService ApiService
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <PageTitle>Checklists</PageTitle>
@@ -22,10 +24,10 @@ else
 
         <div class="row mb-3">
             <div class="col-md-4">
-                <input type="text" class="form-control" placeholder="Search checklists..." @bind="searchTerm" @bind:event="oninput" />
+                <input type="text" class="form-control" placeholder="Search checklists..." @bind="searchTerm" @bind:event="oninput" @onkeyup="ApplyFiltersAndSort" />
             </div>
             <div class="col-md-4">
-                <select class="form-select" @bind="filterType">
+                <select class="form-select" @bind="filterType" @bind:after="ApplyFiltersAndSort">
                     <option value="">All Types</option>
                     @foreach (var type in types)
                     {
@@ -37,7 +39,11 @@ else
 
         @if (filteredChecklists == null)
         {
-            <p>Loading...</p>
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
         }
         else if (!filteredChecklists.Any())
         {
@@ -75,7 +81,11 @@ else
                                 <td>@checklist.Created.ToLocalTime().ToString("g")</td>
                                 <td>@checklist.Updated.ToLocalTime().ToString("g")</td>
                                 <td>
+                                    <a href="/checklists/@checklist.Id" class="btn btn-sm btn-info">View</a>
                                     <a href="/checklists/edit/@checklist.Id" class="btn btn-sm btn-primary">Edit</a>
+                                    <button class="btn btn-sm btn-success" @onclick="() => DownloadPdf(checklist.Id)">
+                                        <i class="bi bi-file-pdf"></i> PDF
+                                    </button>
                                     <button class="btn btn-sm btn-danger" @onclick="() => DeleteChecklist(checklist.Id)">Delete</button>
                                 </td>
                             </tr>
@@ -158,6 +168,13 @@ else
     {
         if (sortColumn != column) return "?";
         return sortAscending ? "?" : "?";
+    }
+
+    private async Task DownloadPdf(Guid id)
+    {
+        var apiBaseUrl = Navigation.BaseUri.TrimEnd('/').Replace("7000", "7001");
+        var pdfUrl = $"{apiBaseUrl}/api/checklists/{id}/pdf";
+        await JSRuntime.InvokeVoidAsync("open", pdfUrl, "_blank");
     }
 
     private async Task DeleteChecklist(Guid id)

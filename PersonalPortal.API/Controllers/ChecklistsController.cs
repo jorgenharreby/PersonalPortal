@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PersonalPortal.API.Data;
+using PersonalPortal.API.Services;
 using PersonalPortal.Core.Models;
 
 namespace PersonalPortal.API.Controllers;
@@ -9,10 +10,12 @@ namespace PersonalPortal.API.Controllers;
 public class ChecklistsController : ControllerBase
 {
     private readonly IChecklistRepository _repository;
+    private readonly IChecklistPdfService _pdfService;
 
-    public ChecklistsController(IChecklistRepository repository)
+    public ChecklistsController(IChecklistRepository repository, IChecklistPdfService pdfService)
     {
         _repository = repository;
+        _pdfService = pdfService;
     }
 
     [HttpGet]
@@ -30,6 +33,19 @@ public class ChecklistsController : ControllerBase
             return NotFound();
         
         return Ok(checklist);
+    }
+
+    [HttpGet("{id}/pdf")]
+    public async Task<ActionResult> GetPdf(Guid id)
+    {
+        var checklist = await _repository.GetByIdAsync(id);
+        if (checklist == null)
+            return NotFound();
+
+        var pdfBytes = _pdfService.GeneratePdf(checklist);
+        var fileName = $"{checklist.Name.Replace(" ", "_")}_Checklist.pdf";
+        
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     [HttpGet("latest/{count}")]
