@@ -35,7 +35,7 @@
                             <span class="nav-link text-light">Hello, @AuthService.CurrentUser?.DisplayName</span>
                         </li>
                         <li class="nav-item">
-                            <button class="btn btn-link nav-link text-light" @onclick="Logout">Logout</button>
+                            <button class="btn btn-link nav-link text-light" @onclick="HandleLogout">Logout</button>
                         </li>
                     }
                     else
@@ -73,10 +73,11 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void Logout()
+    private async Task HandleLogout()
     {
         AuthService.Logout();
-        Navigation.NavigateTo("/login");
+        await InvokeAsync(StateHasChanged);
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 
     public void Dispose()
