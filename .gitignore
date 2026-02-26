@@ -260,7 +260,7 @@ UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
 
-# SQL Server files
+# SQL Server database files (ignore actual databases, but keep .sql scripts)
 *.mdf
 *.ldf
 *.ndf
@@ -360,3 +360,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+##############################################
+# Personal Portal Specific
+##############################################
+
+# Keep documentation files
+!*.md
+
+# Keep database scripts (but not actual database files)
+!Database/*.sql

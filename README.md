@@ -1,283 +1,263 @@
 # Personal Portal
 
-A personal web portal for managing text notes, checklists, recipes, and pictures with secure authentication.
+A full-stack personal information management system built with **Blazor Server** (.NET 10) and **SQL Server**.
 
 ## Features
 
-- **Authentication**: Secure login with option to trust computer for 30 days
-- **Text Notes**: Store and manage plain text notes
-- **Checklists**: Create and organize checklists with items
-- **Recipes**: Save recipes with formatted text and pictures
-- **Pictures**: Upload and manage pictures with captions
-- **Search & Filter**: Search items by name and filter by type
-- **Sortable Tables**: Sort lists by various columns
-- **Responsive Design**: Bootstrap-based UI that works on all devices
+- ?? **Text Notes** - Create and manage text notes
+- ? **Checklists** - Organize items with groups, export to PDF
+- ?? **Recipes** - Store recipes with rich text formatting and pictures
+- ?? **Pictures** - Upload and manage images, link to recipes
+- ?? **Authentication** - Secure login system
+- ?? **PDF Export** - Generate printable checklist PDFs
 
 ## Technology Stack
 
-- **Frontend**: Blazor Server with Bootstrap 5
-- **Backend**: ASP.NET Core Web API
-- **Database**: SQL Server (LocalDB or SQL Server)
-- **Data Access**: Dapper ORM
-- **API Documentation**: Swagger/OpenAPI
+### Backend (API)
+- .NET 10
+- ASP.NET Core Web API
+- Dapper (SQL data access)
+- QuestPDF (PDF generation)
+- SQL Server (LocalDB)
+
+### Frontend (Web)
+- Blazor Server
+- Bootstrap 5
+- Quill.js (WYSIWYG editor)
 
 ## Prerequisites
 
-- .NET 10.0 SDK or later
-- SQL Server or SQL Server LocalDB
-- Visual Studio 2022 (recommended) or VS Code
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [SQL Server LocalDB](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb) (included with Visual Studio)
+- Visual Studio 2022 or VS Code (optional but recommended)
 
-## Setup Instructions
+## Getting Started
 
-### 1. Database Setup
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/jorgenharreby/PersonalPortal.git
+cd PersonalPortal
+```
+
+### 2. Set Up the Database
+
+#### Option A: Using the Initialization Script (Recommended)
+
+```cmd
+sqlcmd -S "(localdb)\mssqllocaldb" -i Database\InitializeDatabase.sql
+```
+
+This will:
+- Create the `PersonalPortal` database
+- Create all tables (Users, TextNotes, Checklists, ChecklistItems, Recipes, Pictures)
+- Create indexes for performance
+- Insert default user (username: `harreby`, password: `fishalot`)
+
+#### Option B: Manual Setup
 
 1. Open SQL Server Management Studio (SSMS) or Azure Data Studio
-2. Connect to your SQL Server instance:
-   - For LocalDB: `(localdb)\mssqllocaldb`
-   - For SQL Server: Your server name
-3. Open the file `Database/InitializeDatabase.sql`
-4. Create the database by uncommenting the first few lines:
-   ```sql
-   CREATE DATABASE PersonalPortal;
-   GO
-   USE PersonalPortal;
-   GO
-   ```
-5. Execute the entire script to create tables and seed data
+2. Connect to `(localdb)\mssqllocaldb`
+3. Open `Database\InitializeDatabase.sql`
+4. Execute the script
 
-### 2. Update Connection Strings
+### 3. Run the Applications
 
-Update the connection string in `PersonalPortal.API/appsettings.json`:
+#### Option A: Using the Startup Script (Easiest)
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=PersonalPortal;Trusted_Connection=True;MultipleActiveResultSets=true"
-  }
-}
+```cmd
+start-portal-improved.bat
 ```
 
-For SQL Server, use:
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=YOUR_SERVER;Database=PersonalPortal;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True"
-  }
-}
-```
+This will:
+- Start the API on `https://localhost:7001`
+- Start the Web app on `https://localhost:7000`
+- Open your browser automatically
 
-### 3. Configure API URL
-
-Update the API base URL in `PersonalPortal.Web/appsettings.json` if needed:
-
-```json
-{
-  "ApiBaseUrl": "https://localhost:7001"
-}
-```
-
-### 4. Build and Run
-
-#### Using Visual Studio:
-
-1. Open `PersonalPortal.sln`
-2. Set multiple startup projects:
-   - Right-click solution ? Properties ? Multiple startup projects
-   - Set both `PersonalPortal.API` and `PersonalPortal.Web` to "Start"
-3. Press F5 to run
-
-#### Using Command Line:
+#### Option B: Manual Startup
 
 **Terminal 1 - API:**
-```bash
+```cmd
 cd PersonalPortal.API
-dotnet run
+dotnet run --launch-profile https
 ```
 
 **Terminal 2 - Web:**
-```bash
+```cmd
 cd PersonalPortal.Web
-dotnet run
+dotnet run --launch-profile https
 ```
 
-### 5. Access the Application
+### 4. Access the Application
 
-- **Web Application**: https://localhost:7000 (or http://localhost:5000)
-- **API**: https://localhost:7001 (or http://localhost:5001)
-- **Swagger**: https://localhost:7001/swagger
-
-### 6. Login
-
-Default credentials:
-- **Username**: harreby
-- **Password**: fishalot
-- **Role**: Admin
+1. Open your browser to: **https://localhost:7000**
+2. Login with default credentials:
+   - **Username:** `harreby`
+   - **Password:** `fishalot`
+3. Start using your Personal Portal!
 
 ## Project Structure
 
 ```
 PersonalPortal/
-??? Database/
-?   ??? InitializeDatabase.sql       # Database schema and seed data
-??? PersonalPortal.Core/
-?   ??? Models/                      # Shared data models
-?       ??? User.cs
-?       ??? TextNote.cs
-?       ??? Checklist.cs
-?       ??? Recipe.cs
-?       ??? Picture.cs
-?       ??? AuthModels.cs
-??? PersonalPortal.API/
-?   ??? Controllers/                 # API endpoints
-?   ?   ??? AuthController.cs
-?   ?   ??? TextNotesController.cs
-?   ?   ??? ChecklistsController.cs
-?   ?   ??? RecipesController.cs
-?   ?   ??? PicturesController.cs
-?   ??? Data/                        # Data access layer (Dapper)
-?   ?   ??? IUserRepository.cs
-?   ?   ??? UserRepository.cs
-?   ?   ??? ... (other repositories)
+??? PersonalPortal.API/          # Backend API
+?   ??? Controllers/             # API endpoints
+?   ??? Data/                    # Database repositories
+?   ??? Services/                # Business logic (PDF generation)
 ?   ??? Program.cs
-?   ??? appsettings.json
-??? PersonalPortal.Web/
-    ??? Components/
-    ?   ??? Pages/                   # Razor pages
-    ?   ?   ??? Home.razor
-    ?   ?   ??? Login.razor
-    ?   ?   ??? TextNotes.razor
-    ?   ?   ??? TextNoteView.razor
-    ?   ??? Layout/
-    ?       ??? MainLayout.razor
-    ??? Services/                    # Client services
-    ?   ??? AuthService.cs
-    ?   ??? ApiService.cs
-    ??? Program.cs
-    ??? appsettings.json
+??? PersonalPortal.Web/          # Blazor Server frontend
+?   ??? Components/
+?   ?   ??? Pages/              # Razor pages
+?   ?   ??? Layout/             # Layout components
+?   ?   ??? Shared/             # Shared components (QuillEditor)
+?   ??? Services/               # Frontend services
+?   ??? wwwroot/                # Static files, CSS, JS
+?   ??? Program.cs
+??? PersonalPortal.Core/         # Shared models
+?   ??? Models/                 # Data models
+??? Database/                    # SQL scripts
+?   ??? InitializeDatabase.sql  # Main setup script
+?   ??? Migration_*.sql         # Migration scripts
+??? Documentation files         # Feature documentation (*.md)
 ```
 
-## API Endpoints
+## Database Schema
 
-### Authentication
-- `POST /api/auth/login` - Login with username/password
-- `POST /api/auth/validate` - Validate authentication token
+### Tables
 
-### Text Notes
-- `GET /api/textnotes` - Get all text notes
-- `GET /api/textnotes/{id}` - Get specific text note
-- `GET /api/textnotes/latest/{count}` - Get latest N notes
-- `GET /api/textnotes/search/{searchTerm}` - Search notes
-- `POST /api/textnotes` - Create new note
-- `PUT /api/textnotes/{id}` - Update note
-- `DELETE /api/textnotes/{id}` - Delete note
+- **Users** - User authentication
+- **TextNotes** - Simple text notes
+- **Checklists** - Checklist headers
+- **ChecklistItems** - Individual checklist items with groups
+- **Recipes** - Recipe information with rich text
+- **Pictures** - Image storage with optional recipe links
 
-### Checklists
-- `GET /api/checklists` - Get all checklists
-- `GET /api/checklists/{id}` - Get specific checklist
-- `GET /api/checklists/latest/{count}` - Get latest N checklists
-- `GET /api/checklists/type/{type}` - Get checklists by type
-- `GET /api/checklists/search/{searchTerm}` - Search checklists
-- `POST /api/checklists` - Create new checklist
-- `PUT /api/checklists/{id}` - Update checklist
-- `DELETE /api/checklists/{id}` - Delete checklist
+### Connection String
 
-### Recipes
-- `GET /api/recipes` - Get all recipes
-- `GET /api/recipes/{id}` - Get specific recipe
-- `GET /api/recipes/latest/{count}` - Get latest N recipes
-- `GET /api/recipes/type/{type}` - Get recipes by type
-- `GET /api/recipes/search/{searchTerm}` - Search recipes
-- `POST /api/recipes` - Create new recipe
-- `PUT /api/recipes/{id}` - Update recipe
-- `DELETE /api/recipes/{id}` - Delete recipe
+Default connection string (configured in `appsettings.json`):
+```
+Server=(localdb)\\mssqllocaldb;Database=PersonalPortal;Trusted_Connection=true;TrustServerCertificate=true
+```
 
-### Pictures
-- `GET /api/pictures` - Get all pictures
-- `GET /api/pictures/{id}` - Get specific picture
-- `GET /api/pictures/latest/{count}` - Get latest N pictures
-- `GET /api/pictures/recipe/{recipeId}` - Get pictures for a recipe
-- `POST /api/pictures` - Upload new picture
-- `PUT /api/pictures/{id}` - Update picture
-- `DELETE /api/pictures/{id}` - Delete picture
+## Configuration
 
-## Usage
+### API Configuration (`PersonalPortal.API/appsettings.json`)
+- **ConnectionStrings:DefaultConnection** - Database connection
+- **CORS** - Allowed origins for Blazor app
 
-### Home Page
-The home page displays:
-- Latest 3 text notes
-- Latest 3 checklists
-- Latest 3 recipes
-- Carousel of latest 10 pictures
+### Web Configuration (`PersonalPortal.Web/appsettings.json`)
+- **ApiBaseUrl** - API endpoint URL
 
-Each section has buttons to:
-- Add new items
-- View all items
+## Features Documentation
 
-### Administrative Pages
-Each item type has an administrative page with:
-- List view of all items
-- Search functionality
-- Sortable columns
-- Filter by type (for checklists and recipes)
-- Edit and Delete actions
-- Add new item button
+Detailed documentation for each feature:
 
-### Read-only View Pages
-Each item can be accessed directly via its GUID URL for read-only viewing:
-- `/textnotes/{id}`
-- `/checklists/{id}`
-- `/recipes/{id}`
-- `/pictures/{id}`
-
-These pages are accessible without authentication (future enhancement).
-
-## Security Notes
-
-?? **Important**: This is a basic implementation. For production use, consider:
-
-1. **Password Hashing**: Currently passwords are stored in plain text. Use proper password hashing (bcrypt, PBKDF2, or Argon2).
-2. **JWT Tokens**: Implement proper JWT-based authentication instead of simple token strings.
-3. **HTTPS**: Always use HTTPS in production.
-4. **CORS**: Configure CORS appropriately for your deployment environment.
-5. **SQL Injection**: Dapper protects against SQL injection, but always validate input.
-6. **Authorization**: Implement proper role-based authorization for Admin vs Viewer roles.
-7. **Cookie Security**: Implement secure cookie handling with HttpOnly and Secure flags.
-
-## Future Enhancements
-
-- [ ] Implement proper JWT authentication
-- [ ] Add password hashing
-- [ ] Enable public read-only access via GUID links
-- [ ] Add pagination for large lists
-- [ ] Implement rich text editor for recipes
-- [ ] Add image upload interface with preview
-- [ ] Export/import functionality
-- [ ] Tags and categories
-- [ ] Full-text search across all content
-- [ ] Mobile app
-- [ ] Dark mode
+- **[Setup Checklist](SETUP-CHECKLIST.md)** - Complete setup guide
+- **[Quick Start](QUICKSTART.md)** - Get started quickly
+- **[Checklist Groups](CHECKLIST-GROUPS-FEATURE.md)** - Organize checklist items
+- **[PDF Export](CHECKLIST-PDF-FEATURE.md)** - Generate printable PDFs
+- **[Recipe Editor](QUILL-EDITOR-FIX.md)** - Rich text editing with Quill
+- **[Recipes & Pictures](RECIPES-PICTURES-COMPLETE.md)** - Complete guide
 
 ## Troubleshooting
 
 ### Database Connection Issues
-- Verify SQL Server is running
-- Check connection string in appsettings.json
-- Ensure database exists and tables are created
 
-### API Not Accessible from Web
-- Check both projects are running
-- Verify API URL in Web appsettings.json
-- Check CORS configuration in API Program.cs
+**Problem:** Cannot connect to database
 
-### Bootstrap Not Loading
-- Ensure Bootstrap files are in wwwroot/lib/bootstrap
-- Check browser console for errors
-- Run `dotnet restore` in Web project
+**Solution:**
+1. Verify SQL Server LocalDB is installed:
+   ```cmd
+   sqllocaldb info
+   ```
+2. Create/start LocalDB instance:
+   ```cmd
+   sqllocaldb create MSSQLLocalDB
+   sqllocaldb start MSSQLLocalDB
+   ```
+3. Run initialization script again
 
-## License
+### Port Already in Use
 
-This is a personal project. Feel free to use and modify as needed.
+**Problem:** Port 7000 or 7001 already in use
 
-## Support
+**Solution:**
+1. Find and kill the process:
+   ```cmd
+   netstat -ano | findstr :7001
+   taskkill /PID [PID] /F
+   ```
+2. Or change ports in `launchSettings.json`
 
-For issues or questions, please create an issue in the repository.
+### HTTPS Certificate Issues
+
+**Problem:** Certificate errors in browser
+
+**Solution:**
+```cmd
+dotnet dev-certs https --clean
+dotnet dev-certs https --trust
+```
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for more issues and solutions.
+
+## Development
+
+### Building the Solution
+
+```cmd
+dotnet build
+```
+
+### Adding Migrations
+
+When updating the database schema:
+
+1. Create a new migration script in `Database/` folder
+2. Name it `Migration_[Description].sql`
+3. Include it in the repository
+4. Run it on your database
+5. Document the changes
+
+## Default Credentials
+
+**?? Important:** Change the default user password in production!
+
+Default user (for development):
+- **Username:** harreby
+- **Password:** fishalot
+- **Display Name:** Jørgen
+- **Role:** Admin
+
+## Security Notes
+
+- Passwords are currently stored in **plain text** - implement proper hashing before production use
+- HTTPS is required in production
+- Update CORS settings for production domains
+- Change default user credentials
+
+## Author
+
+**Jørgen Harreby**
+- GitHub: [@jorgenharreby](https://github.com/jorgenharreby)
+
+## Acknowledgments
+
+- QuestPDF for PDF generation
+- Quill.js for rich text editing
+- Bootstrap for UI components
+- Dapper for database access
+
+## Version History
+
+- **1.0.0** - Initial release
+  - Text Notes
+  - Checklists with groups
+  - Recipes with rich text editor
+  - Pictures with upload
+  - PDF export for checklists
+  - Authentication system
+
+---
+
+**Happy organizing! ???????**
