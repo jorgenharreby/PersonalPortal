@@ -370,3 +370,6 @@ FodyWeavers.xsd
 
 # Keep database scripts (but not actual database files)
 !Database/*.sql
+
+# Exclude database backup files (these are personal data)
+Database/BackupData_*.sql
