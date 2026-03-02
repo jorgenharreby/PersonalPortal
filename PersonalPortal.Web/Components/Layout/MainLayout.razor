@@ -13,7 +13,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    @if (AuthService.IsAuthenticated)
+                    @if (isAuthenticated)
                     {
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -29,13 +29,13 @@
                     }
                 </ul>
                 <ul class="navbar-nav">
-                    @if (AuthService.IsAuthenticated)
+                    @if (isAuthenticated)
                     {
                         <li class="nav-item">
-                            <span class="nav-link text-light">Hello, @AuthService.CurrentUser?.DisplayName</span>
+                            <span class="nav-link text-light">Hello, @currentUserName</span>
                         </li>
                         <li class="nav-item">
-                            <button class="btn btn-link nav-link text-light" @onclick="HandleLogout">Logout</button>
+                            <LogoutButton />
                         </li>
                     }
                     else
@@ -63,21 +63,25 @@
 </div>
 
 @code {
+    private bool isAuthenticated;
+    private string? currentUserName;
+
     protected override void OnInitialized()
     {
+        UpdateAuthState();
         AuthService.OnAuthStateChanged += OnAuthStateChangedHandler;
     }
 
-    private async void OnAuthStateChangedHandler()
+    private void UpdateAuthState()
     {
-        await InvokeAsync(StateHasChanged);
+        isAuthenticated = AuthService.IsAuthenticated;
+        currentUserName = AuthService.CurrentUser?.DisplayName;
     }
 
-    private async Task HandleLogout()
+    private void OnAuthStateChangedHandler()
     {
-        AuthService.Logout();
-        await InvokeAsync(StateHasChanged);
-        Navigation.NavigateTo("/login", forceLoad: true);
+        UpdateAuthState();
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()

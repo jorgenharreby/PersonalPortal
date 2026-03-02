@@ -1,0 +1,15 @@
+@using PersonalPortal.Web.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<button class="btn btn-link nav-link text-light" @onclick="HandleLogout">Logout</button>
+
+@code {
+    private async Task HandleLogout()
+    {
+        AuthService.Logout();
+        await Task.Delay(50);
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}
